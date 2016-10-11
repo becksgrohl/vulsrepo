@@ -501,7 +501,7 @@ var setEvents = function() {
 		fadeAlert("#alert_pivot_conf");
 		initPivotTable();
 	});
-	
+
 	$("#clear_pivot_conf").click(function() {
 		db.remove("vulsrepo_pivot_conf");
 		$("#drop_topmenu_visibleValue").html("Select setting");
@@ -509,7 +509,7 @@ var setEvents = function() {
 		filterDisp.off("#label_pivot_conf");
 		fadeAlert("#alert_pivot_conf");
 		initPivotTable();
-	});	
+	});
 
 	$("#Setting").click(function() {
 		$("#modal-setting").modal('show');
@@ -772,17 +772,17 @@ var displayPivot = function(array) {
 
 };
 
-var createDetailData = function(th) {
+var createDetailData = function(cveID) {
 	var targetObj;
 	$.each(vulsrepo.detailRawData, function(x, x_val) {
 		$.each(x_val.data.KnownCves, function(y, y_val) {
-			if (th === y_val.CveDetail.CveID) {
+			if (cveID === y_val.CveDetail.CveID) {
 				targetObj = y_val.CveDetail;
 			}
 		});
 
 		$.each(x_val.data.UnknownCves, function(y, y_val) {
-			if (th === y_val.CveDetail.CveID) {
+			if (cveID === y_val.CveDetail.CveID) {
 				targetObj = y_val.CveDetail;
 			}
 		});
@@ -791,36 +791,66 @@ var createDetailData = function(th) {
 	return targetObj;
 };
 
-var displayDetail = function(th) {
+var createDetailPackageData = function(cveID) {
+	var tmp_array = [];
+	$.each(vulsrepo.detailRawData, function(x, x_val) {
+		$.each(x_val.data.KnownCves, function(y, y_val) {
+			if (cveID === y_val.CveDetail.CveID) {
+				$.each(y_val.Packages, function(z, z_val) {
+					var tmp_Map = {
+						ScanTime : x_val.scanTime,
+						ServerName : x_val.data.ServerName,
+						ContainerName : x_val.data.Container.Name,
+						PackageName : z_val.Name,
+						PackageVersion : z_val.Version,
+						PackageRelease : z_val.Release,
+						PackageNewVersion : z_val.NewVersion,
+						PackageNewRelease : z_val.NewRelease
+					};
+					tmp_array.push(tmp_Map);
+				});
+			}
+		});
 
+		$.each(x_val.data.UnknownCves, function(y, y_val) {
+			if (cveID === y_val.CveDetail.CveID) {
+				$.each(y_val.Packages, function(z, z_val) {
+					var tmp_Map = {
+						ScanTime : x_val.scanTime,
+						ServerName : x_val.data.ServerName,
+						ContainerName : x_val.data.Container.Name,
+						PackageName : z_val.Name,
+						PackageVersion : z_val.Version,
+						PackageRelease : z_val.Release,
+						PackageNewVersion : z_val.NewVersion,
+						PackageNewRelease : z_val.NewRelease
+					};
+					tmp_array.push(tmp_Map);
+				});
+			}
+		});
+	});
+
+	return tmp_array;
+};
+
+var initDetail = function() {
 	$("#modal-label").text("");
+
+	$("#detailTitle_jvn,#detailTitle_nvd").empty();
+	$("#publishedDateJvn,#lastModifiedDateJvn,#publishedDateNvd,#lastModifiedDateNvd").text("------");
+	$("#scoreText_jvn,#scoreText_nvd").text("").css('background-color', 'gray');
+	$("#cvss_av_jvn,#cvss_ac_jvn,#cvss_au_jvn,#cvss_c_jvn,#cvss_i_jvn,#cvss_a_jvn").removeClass().text("");
+	$("#cvss_av_nvd,#cvss_ac_nvd,#cvss_au_nvd,#cvss_c_nvd,#cvss_i_nvd,#cvss_a_nvd").removeClass().text("");
+	$("#Summary_jvn,#Summary_nvd").empty();
+
 	$("#CweID").empty();
 	$("#Link").empty();
 	$("#References").empty();
+};
 
-	$("#detailTitle_jvn").empty();
-	$("#publishedDateJvn").text("------");
-	$("#lastModifiedDateJvn").text("------");			
-	$("#scoreText_jvn").text("").css('background-color', 'gray');
-	$("#cvss_av_jvn").removeClass().text("");
-	$("#cvss_ac_jvn").removeClass().text("");
-	$("#cvss_au_jvn").removeClass().text("");
-	$("#cvss_c_jvn").removeClass().text("");
-	$("#cvss_i_jvn").removeClass().text("");
-	$("#cvss_a_jvn").removeClass().text("");
-	$("#Summary_jvn").empty();
-
-	$("#detailTitle_nvd").empty();
-	$("#publishedDateNvd").text("------");
-	$("#lastModifiedDateNvd").text("------");			
-	$("#scoreText_nvd").text("").css('background-color', 'gray');
-	$("#cvss_av_nvd").removeClass().text("");
-	$("#cvss_ac_nvd").removeClass().text("");
-	$("#cvss_au_nvd").removeClass().text("");
-	$("#cvss_c_nvd").removeClass().text("");
-	$("#cvss_i_nvd").removeClass().text("");
-	$("#cvss_a_nvd").removeClass().text("");
-	$("#Summary_nvd").empty();
+var displayDetail = function(th) {
+	initDetail();
 
 	if (db.get("vulsrepo_detailLastTab") === "nvd") {
 		$('a[href="#tab_nvd"]').tab('show');
@@ -828,13 +858,15 @@ var displayDetail = function(th) {
 		$('a[href="#tab_jvn"]').tab('show');
 	}
 
+	// ---Tab main
 	var data = createDetailData(th);
 	$("#modal-label").text(data.CveID);
 
+	// ---Tab JVN---
 	if (data.Jvn.Summary !== "") {
 		$("#publishedDateJvn").text(data.Jvn.PublishedDate.split("T")[0]);
 		$("#lastModifiedDateJvn").text(data.Jvn.LastModifiedDate.split("T")[0]);
-		
+
 		var arrayVector = getSplitArray(data.Jvn.Vector);
 		$("#scoreText_jvn").text(data.Jvn.Score + " (" + data.Jvn.Severity + ")").css('background-color', getSeverity(data.Jvn.Score)[1]);
 		$("#cvss_av_jvn").text(getVector.jvn(arrayVector[0])[0]).addClass(getVector.jvn(arrayVector[0])[1]);
@@ -850,10 +882,11 @@ var displayDetail = function(th) {
 		$("#Summary_jvn").append("NO DATA");
 	}
 
+	// ---Tab NVD---
 	if (data.Nvd.Summary !== "") {
 		$("#publishedDateNvd").text(data.Nvd.PublishedDate.split("T")[0]);
-		$("#lastModifiedDateNvd").text(data.Nvd.LastModifiedDate.split("T")[0]);		
-		
+		$("#lastModifiedDateNvd").text(data.Nvd.LastModifiedDate.split("T")[0]);
+
 		$("#scoreText_nvd").text(data.Nvd.Score + " (" + getSeverity(data.Nvd.Score)[0] + ")").css('background-color', getSeverity(data.Nvd.Score)[1]);
 		$("#cvss_av_nvd").text(data.Nvd.AccessVector).addClass(getVector.nvd("AV", data.Nvd.AccessVector));
 		$("#cvss_ac_nvd").text(data.Nvd.AccessComplexity).addClass(getVector.nvd("AC", data.Nvd.AccessComplexity));
@@ -868,6 +901,7 @@ var displayDetail = function(th) {
 		$("#Summary_nvd").append("NO DATA");
 	}
 
+	// ---Link---
 	if (data.Nvd.CweID === "" || data.Nvd.CweID === undefined) {
 		$("#CweID").append("<span>NO DATA</span>");
 	} else {
@@ -900,6 +934,7 @@ var displayDetail = function(th) {
 	addLink("#Link", vulsrepo.link.debian.url + data.CveID, vulsrepo.link.debian.disp, vulsrepo.link.debian.find, "debian");
 	addLink("#Link", vulsrepo.link.ubuntu.url + data.CveID, vulsrepo.link.ubuntu.disp, vulsrepo.link.ubuntu.find, "ubuntu");
 
+	// ---References---
 	if (data.Jvn.References !== null) {
 		$.each(data.Jvn.References, function(x, x_val) {
 			$("#References").append("<div>[" + x_val.Source + "]<a href=\"" + x_val.Link + "\" target='_blank'> (" + x_val.Link + ")</a></div>");
@@ -911,8 +946,67 @@ var displayDetail = function(th) {
 		});
 	}
 
+	// ---Tab Package
+	var pkgData = createDetailPackageData(th);
+
+	console.log(pkgData);
+	
+	var table = $("#foo-table").DataTable({
+		retrieve : true,
+		scrollX : true,
+		autoWidth : true,
+		data : pkgData,
+		columns : [ {
+			data : "ScanTime"
+		}, {
+			data : "ServerName"
+		}, {
+			data : "ContainerName"
+		}, {
+			data : "PackageName"
+		}, {
+			data : "PackageVersion"
+		}, {
+			data : "PackageRelease"
+		}, {
+			data : "PackageNewVersion"
+		}, {
+			data : "PackageNewRelease"
+		} ]
+	});
+
+	table.clear().draw();
+
+//	var table = initPkgTable();
+//	table.rows().add(pkgData).draw();
+
 	$("#modal-detail").modal('show');
 
+};
+
+var initPkgTable = function() {
+	return $("#foo-table").dataTable({
+		retrieve : true,
+		scrollX : true,
+		autoWidth : true,
+		columns : [ {
+			data : "ScanTime"
+		}, {
+			data : "ServerName"
+		}, {
+			data : "ContainerName"
+		}, {
+			data : "PackageName"
+		}, {
+			data : "PackageVersion"
+		}, {
+			data : "PackageRelease"
+		}, {
+			data : "PackageNewVersion"
+		}, {
+			data : "PackageNewRelease"
+		} ]
+	});
 };
 
 var addLink = function(target, url, disp, find, imgIdTarget) {
